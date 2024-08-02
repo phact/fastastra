@@ -1,1 +1,1 @@
-# chatgpt-retrieval-plugin
+# fastastra
