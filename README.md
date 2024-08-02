@@ -34,6 +34,18 @@ or
 ### List all rows
     rows = cats()
 
+### ANN / vector search
+    dogs = db.t.dogs
+    if dogs not in db.t:
+        dogs.create(id=int, name=str, good_boy=bool, embedding=(List[float], 2), pk='id')
+        dogs.c.good_boy.index()
+        dogs.c.embedding.index()
+
+    dogs.insert(id=2, good_boy=True, name="spike", embedding=[0.1, 0.2])
+
+    index_lookukp = dogs.xtra(good_boy=True)
+    ann_matches = dogs.xtra(embedding=[0.2, 0.2])
+
 ### Get dataclass and pydantic model
     dataclass = cats.dataclass()
     model = cats.pydantic_model()
