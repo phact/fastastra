@@ -1,5 +1,6 @@
 import os
 import uuid
+from typing import List
 
 import dotenv
 
@@ -17,12 +18,17 @@ def test_fastastra():
 
     # Create a new table using Fastlite-compatible syntax
     cats = db.t.cats
+    cats.drop()
     if cats not in db.t:
         cats.create(cat_id=uuid.uuid1, title=str, done=bool, partition_keys='cat_id')
     dogs = db.t.dogs
+    dogs.drop()
     if dogs not in db.t:
-        dogs.create(id=int, owner=str, country=str, name=str, good_boy=bool, partition_keys=['country', 'owner'], clustering_columns=['id'])
+        dogs.create(id=int, owner=str, country=str, name=str, good_boy=bool, embedding=(List[float], 2), partition_keys=['country', 'owner'], clustering_columns=['id'])
+        dogs.c.good_boy.index()
+        dogs.c.embedding.index()
     ponies = db.t.ponies
+    ponies.drop()
     if ponies not in db.t:
         ponies.create(id=uuid.uuid4, owner=str, country=str, name=str, good_boy=bool, pk="id")
 
@@ -45,9 +51,37 @@ def test_fastastra():
 
     # Upsert rows
     dogs.insert(id=1, owner="seb", country="usa")
-    dogs.insert(id=2, owner="seb", country="usa", name="spike")
+    dogs.insert(id=2, owner="seb", country="usa", name="spike", embedding=[0.1, 0.2])
     dogs.update(id=3, owner="seb", country="usa")
     dogs.update(id=4, owner="seb", country="usa", good_boy=True)
+
+    try:
+        dogs.xtra(good_boy=True)
+    except Exception as e:
+        print(e)
+
+    try:
+        good_boys = dogs.xtra(good_boy=True)
+        if isinstance(good_boys, list):
+            assert len(good_boys) > 0
+        else:
+           assert good_boys is not None
+    except Exception as e:
+        print(e)
+        raise e
+
+
+    try:
+        ann_matches = dogs.xtra(embedding=[0.2, 0.2])
+        if isinstance(ann_matches, list):
+            assert len(ann_matches) > 0
+        else:
+            assert ann_matches is not None
+    except Exception as e:
+        print(e)
+        raise e
+
+
 
     # Upsert rows
     pony_uuid = uuid.uuid4()

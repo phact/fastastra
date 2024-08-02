@@ -1,22 +1,17 @@
 import os
 import uuid
-
 import dotenv
-from fastastra.fastastra import AstraDatabase
 from fastcore.basics import patch
-from starlette.responses import FileResponse
-
-from fasthtml import Style, user_pwd_auth, FastHTML, picolink, AX, Li, Input, Div, Form, Group, Button, Card, Ul, \
-    Titled, Hidden, Checkbox, fill_form
+from fasthtml import *
 from fasthtml.fastapp import serve
+
+from fastastra.fastastra import AstraDatabase
 
 dotenv.load_dotenv("./.env")
 dotenv.load_dotenv("../.env")
 
-
 token = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
 dbid = os.environ["DBID"]
-
 
 db = AstraDatabase(token, dbid)
 todos = db.t.todos

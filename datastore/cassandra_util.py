@@ -1,11 +1,11 @@
 from pydantic import BaseModel, validator, Field
 from enum import Enum
 from datetime import date, time, datetime, timedelta
-from typing import List, Dict, Type, Any, Union, Optional
+from typing import List, Dict, Type, Any, Union
 from cassandra.cqltypes import cqltype_to_python
 import uuid
 
-class Column(BaseModel):
+class CassandraColumn(BaseModel):
     name: str = Field(..., description="Name of the column")
     type: str = Field(..., description="Cassandra data type of the column. Must be either a base type: \nascii, bigint, blob, boolean, counter, date, decimal, double, duration, float, inet, int, smallint, text, time, timestamp, timeuuid, tinyint, uuid, varchar, varint\nOr a collection where text could be replaced with a base type set<text>, list<text>, map<text, text>\n or finally a vector type which is always float and takes the number of dimensions: vector<float, 1024>")
     @validator('type')
@@ -21,10 +21,10 @@ class Column(BaseModel):
         python_type = cqltype_to_python(type_str)
         if len(python_type) > 1:
             if python_type[0] == 'set' or python_type[0] == 'list':
-                Column._validate_cassandra_type(python_type[1][0])
+                CassandraColumn._validate_cassandra_type(python_type[1][0])
             elif python_type[0] == 'map':
-                Column._validate_cassandra_type(python_type[1][0])
-                Column._validate_cassandra_type(python_type[1][1])
+                CassandraColumn._validate_cassandra_type(python_type[1][0])
+                CassandraColumn._validate_cassandra_type(python_type[1][1])
             elif python_type[0] == 'vector':
                 # No need for further validation; vectors are lists of floats
                 return
@@ -37,7 +37,7 @@ class Column(BaseModel):
 class DDLModel(BaseModel):
     keyspace_name: str = Field(..., description="Name of the keyspace")
     table_name: str = Field(..., description="Name of the table")
-    columns: List[Column] = Field(..., description="List of columns with their types, this includes partition key and clustering columns")
+    columns: List[CassandraColumn] = Field(..., description="List of columns with their types, this includes partition key and clustering columns")
     partition_key: List[str] = Field(..., description="List of partition key column names, *NOTE ORDER MATTERS*")
     clustering_columns: List[str] = Field(..., description="List of clustering column column names, *NOTE ORDER MATTERS*")
 
@@ -199,4 +199,18 @@ def python_to_cassandra(py_type: Type[Any]) -> str:
         List: CassandraType.LIST.value,
         Dict: CassandraType.MAP.value,
     }
-    return mapping.get(py_type, CassandraType.TEXT.value)
+    cass_type = mapping.get(py_type, None)
+    if cass_type is None:
+        if isinstance(py_type, tuple):
+            try:
+                if py_type[0] == List[float]:
+                    dimensions = py_type[1]
+                    cass_type = f"vector<float, {dimensions}>"
+
+                else:
+                    raise Exception(f"type not supported {py_type}")
+            except Exception as e:
+                Exception("expected (List[float], dimensions) for vector types")
+        else:
+            raise Exception(f"type not supported {py_type}")
+    return cass_type

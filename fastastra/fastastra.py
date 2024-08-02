@@ -5,7 +5,7 @@ from typing import Dict, Tuple, Any, Optional, List, Iterator
 
 from pydantic import BaseModel, create_model
 
-from datastore.cassandra_util import get_pydantic_type, python_to_cassandra, CassandraType, DDLModel, Column
+from datastore.cassandra_util import get_pydantic_type, python_to_cassandra, CassandraType, DDLModel, CassandraColumn
 from datastore.simple_cassandra_datastore import CassandraDataStore
 
 
@@ -30,6 +30,45 @@ def db_login(payload: LoginPayload, token: str):
     datastore.setupSession(token, payload.db_id)
     datastores[token] = datastore
 
+class Column:
+    def __init__(self, table_name, column_name, db):
+        self.table_name = table_name
+        self.column_name = column_name
+        self.db = db
+
+    def __str__(self):
+        return f'"{self.table_name}"."{self.column_name}"'
+
+    def __repr__(self):
+        return self.column_name
+
+    def __iter__(self):
+        return iter(self.column_name)
+
+    def index(self):
+        self.db.client.execute(f"CREATE INDEX IF NOT EXISTS {self.table_name}_{self.column_name}_idx ON {self.db.keyspace}.{self.table_name} ({self.column_name})")
+
+
+
+class DynamicColumns:
+    def __init__(self, table):
+        self.table = table
+
+    def __dir__(self):
+        return map(repr, self())
+
+    def __call__(self):
+        return [Column(self.table.table_name, col.column_name, self.table.db) for col in self.table._columns]
+
+    def __contains__(self, s):
+        return (s if isinstance(s,str) else s.c) in self.table._raw_columns
+
+    def __repr__(self):
+        return ", ".join(dir(self))
+
+    def __getattr__(self, k):
+        if k[0]=='_': raise AttributeError
+        return Column(self.table.table_name, k, self.table.db)
 
 class Table:
     def __init__(self, db, table_name):
@@ -46,6 +85,13 @@ class Table:
             columns.append(row["column_name"])
 
         self.columns = columns
+
+        column_objects = []
+        for column in self.columns:
+            column_obj = Column(self.table_name, column, self.db)
+            column_objects.append(column_obj)
+        self._columns = column_objects
+
         self.partition_keys = [column['column_name'] for column in self.raw_columns if column['kind'] == 'partition_key']
         self.clustering_columns = [column['column_name'] for column in self.raw_columns if column['kind'] == 'clustering']
 
@@ -100,6 +146,82 @@ class Table:
         else:
             return objs
 
+    def xtra(self, request_object: any = None, **kwargs):
+        is_base_model = True
+        if request_object is None:
+            request_object = self._model(**kwargs)
+        request_dict = None
+        if isinstance(request_object, BaseModel):
+            request_dict = request_object.dict()
+        elif dataclasses.is_dataclass(request_object):
+            request_dict = dataclasses.asdict(request_object)
+            is_base_model = False
+        else:
+            raise Exception("insert() requires a pydantic model or dataclass object")
+
+        keys = []
+        args = {}
+        for key, value in request_dict.items():
+            if value is not None:
+                keys.append(key)
+                args[key] = value
+
+        args = self._cast_args(args, keys)
+
+        indexed_columns = self.db.client.get_indexes(self.keyspace, self.table_name)
+        hasIndex = False
+        arg_in_index = False
+        vector_indexes = []
+        for indexed_column in indexed_columns:
+            hasIndex = True
+            # see if it's a vector column
+            # first get the indexed column's details from columns
+            column = [column for column in self.raw_columns if column['column_name'] == indexed_column][0]
+
+            for arg in args:
+                if arg == column['column_name']:
+                    arg_in_index = True
+
+            if len(column)>0 and 'vector' in column['type']:
+                vector_indexes.append(indexed_column)
+                # create a vector endpoint
+        # remove vector columns from indexed columns
+        indexed_columns = [column for column in indexed_columns if column not in vector_indexes]
+
+        rows = None
+        if len(indexed_columns) + len(vector_indexes) > 0 and arg_in_index:
+            rows = self.db.client.select_from_table_by_index(
+                keyspace=self.keyspace,
+                table=self.table_name,
+                indexed_columns=indexed_columns,
+                vector_indexes=vector_indexes,
+                partition_keys=self.partition_keys,
+                columns=self.raw_columns,
+                args=args)
+
+        else:
+            rows = self.db.client.select_from_table_by_keys(
+                keyspace=self.keyspace,
+                table=self.table_name,
+                keys=keys,
+                args=args
+            )
+
+        objs = []
+        for row in rows:
+            if is_base_model:
+                objs.append(self._model(**row))
+            else:
+                objs.append(self._dataclass(**row))
+        if len(objs) == 0:
+            raise KeyError(f"No record found with values: {request_dict}")
+        if len(objs) == 1:
+            return objs[0]
+        else:
+            return objs
+
+
+
     def _get_keys_and_args(self, item):
         keys = []
         args = {}
@@ -138,8 +260,10 @@ class Table:
                 if column['column_name'] == key:
                     type = get_pydantic_type(column['type'])
                     value = args[key]
-                    if not isinstance(value, type):
-                        args[key] = type(value)
+                    if type != List[float]:
+                        if not isinstance(value, type):
+                            casted_val = type(value)
+                            args[key] = casted_val
                     break
         return args
 
@@ -172,6 +296,9 @@ class Table:
         rows = self.db.client.select_all_from_table(self.keyspace, self.table_name)
         return [self._dataclass(**row) for row in rows]
 
+    def drop(self):
+        self.db.client.execute(f"DROP TABLE IF EXISTS {self.keyspace}.{self.table_name}")
+
     def create(
             self,
             pk: str = None, # this translates into a simple single partition_key with no clustering columns
@@ -198,7 +325,12 @@ class Table:
         if isinstance(clustering_columns, str):
             clustering_columns = [clustering_columns]
         for column_name, column_type in columns.items():
-            column_list.append(Column(name=column_name, type=python_to_cassandra(column_type)))
+            try:
+                cas_col_type = python_to_cassandra(column_type)
+                column_list.append(CassandraColumn(name=column_name, type=cas_col_type))
+            except Exception as e:
+                print(e)
+                raise e
         ddl_model = DDLModel(
             keyspace_name=self.db.keyspace,
             table_name=self.table_name,
@@ -212,7 +344,7 @@ class Table:
 
     @property
     def c(self):
-        return self.columns
+        return DynamicColumns(self)
 
     def insert(self, request_object: any = None, **kwargs):
         is_base_model = True
@@ -320,15 +452,14 @@ class AstraDatabase:
 
     @property
     def t(self):
-        if self._tables is None:
-            rows = self.client.get_tables(self.keyspace)
-            tables = []
-            for row in rows:
-                tables.append(row)
-            table_objects = []
-            for table in tables:
-                table_obj = Table(self, table)
-                table_objects.append(table_obj)
-            self._tables = table_objects
+        rows = self.client.get_tables(self.keyspace)
+        tables = []
+        for row in rows:
+            tables.append(row)
+        table_objects = []
+        for table in tables:
+            table_obj = Table(self, table)
+            table_objects.append(table_obj)
+        self._tables = table_objects
         return DynamicTables(self, self._tables)
 

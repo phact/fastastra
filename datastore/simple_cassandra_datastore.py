@@ -345,7 +345,7 @@ class CassandraClient():
         self.session.row_factory = named_tuple_factory
         return json_rows
 
-    async def selectFromTableByIndex(self, keyspace, table, indexed_columns, vector_indexes, partition_keys, columns, args) -> List[Dict[str, Any]]:
+    def select_from_table_by_index(self, keyspace, table, indexed_columns, vector_indexes, partition_keys, columns, args) -> List[Dict[str, Any]]:
         queryString = f"SELECT "
         bind_values = []
         for column in columns:
@@ -369,21 +369,28 @@ class CassandraClient():
 
         has_pk_args = False
         for column in partition_keys:
-            if column['column_name'] in args:
+            if column in args:
                 has_pk_args = True
 
-        if len(indexed_columns) > 0 or has_pk_args:
+        indexed_arg = False
+        for col in indexed_columns:
+            if col in args:
+                indexed_arg = True
+        if (len(indexed_columns) > 0 and indexed_arg) or has_pk_args:
             queryString += f""" FROM {keyspace}.{table} WHERE """
         else:
             queryString += f""" FROM {keyspace}.{table} """
 
+
         for column in indexed_columns:
-            if args[column]:
-                # queryString += f"{column} = '{args[column]}' AND "
-                queryString += f"{column} = ? AND "
-                bind_values.append(args[column])
+            if column in args:
+                if args[column]:
+                    # queryString += f"{column} = '{args[column]}' AND "
+                    queryString += f"{column} = ? AND "
+                    bind_values.append(args[column])
+
         # remove the last AND
-        if len(indexed_columns) > 0 and not has_pk_args:
+        if indexed_arg and not has_pk_args:
             queryString = queryString[:-4]
 
         if has_pk_args:
@@ -396,7 +403,11 @@ class CassandraClient():
             queryString = queryString[:-4]
 
         if len(vector_indexes) > 0:
-            queryString += f"ORDER BY "
+            for column in vector_indexes:
+                if column in args:
+                    queryString += f" ORDER BY "
+                    break
+
         for column in vector_indexes:
             if column in args:
                 queryString += f"""
@@ -404,7 +415,7 @@ class CassandraClient():
                 """
                 bind_values.append(args[column])
         # TODO make limit configurable
-        queryString += f"LIMIT 5"
+        queryString += f"LIMIT 20"
 
         statement = self.session.prepare(queryString)
         statement.retry_policy = VectorRetryPolicy()
