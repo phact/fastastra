@@ -1,0 +1,46 @@
+[tool.poetry]
+name = "fastastra"
+version = "0.1.23"
+description = ""
+authors = ["seb <seb@datastax.com>"]
+readme = "README.md"
+packages = [{include = "fastastra"}, {include= "datastore"}]
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+uvicorn = "^0.30.3"
+python-dotenv = "^1.0.1"
+tenacity = "^8.2.1"
+numpy = "^1.24.2"
+cassandra-driver = "^3.28"
+loguru = "^0.7.0"
+pyyaml = "^6.0.1"
+pydantic = "^2.7.4"
+
+[tool.poetry.scripts]
+start = "cass_api.main:start"
+dev = "cass_api.main:start"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2.1"
+pytest-cov = "^4.0.0"
+pytest-asyncio = "^0.20.3"
+
+
+[tool.poetry.group.examples.dependencies]
+fastcore = "^1.6.1"
+python-fasthtml = "^0.2.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
+]
+asyncio_mode="auto"

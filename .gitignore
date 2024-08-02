@@ -20,11 +20,18 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
+
+# .vscode files
+.vscode/*
+
+# Pycharm
+.idea/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -112,6 +119,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+myvenv/
 
 # Spyder project settings
 .spyderproject
@@ -136,10 +144,3 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
-
-.idea/
-.openapi-generator/
-
-kittens*
-node_modules/
-settings.json
