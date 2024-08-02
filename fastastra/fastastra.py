@@ -306,7 +306,7 @@ class DynamicTables:
 
 
 
-class Database:
+class AstraDatabase:
     def __init__(self, token, dbid):
         login_payload = LoginPayload(db_id=dbid)
         db_login(login_payload, token)

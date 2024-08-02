@@ -3,7 +3,7 @@ import uuid
 
 import dotenv
 
-from fastastra.fastastra import Database
+from fastastra.fastastra import AstraDatabase
 
 dotenv.load_dotenv("./.env")
 dotenv.load_dotenv("../.env")
@@ -13,7 +13,7 @@ def test_fastastra():
     token = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
     dbid = os.environ["DBID"]
 
-    db = Database(token, dbid)
+    db = AstraDatabase(token, dbid)
 
     # Create a new table using Fastlite-compatible syntax
     cats = db.t.cats

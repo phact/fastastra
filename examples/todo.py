@@ -2,7 +2,7 @@ import os
 import uuid
 
 import dotenv
-from fastastra.fastastra import Database
+from fastastra.fastastra import AstraDatabase
 from fastcore.basics import patch
 from starlette.responses import FileResponse
 
@@ -18,7 +18,7 @@ token = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
 dbid = os.environ["DBID"]
 
 
-db = Database(token, dbid)
+db = AstraDatabase(token, dbid)
 todos = db.t.todos
 if todos not in db.t: todos.create(id=uuid.uuid4, title=str, done=bool, pk='id')
 Todo = todos.dataclass()
