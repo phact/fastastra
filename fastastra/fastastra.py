@@ -3,16 +3,30 @@ import uuid
 from dataclasses import make_dataclass, field
 from typing import Dict, Tuple, Any, Optional, List, Iterator
 
+from astra_assistants import patch
+from openai import OpenAI
 from pydantic import BaseModel, create_model
 
 from datastore.cassandra_util import get_pydantic_type, python_to_cassandra, CassandraType, DDLModel, CassandraColumn
 from datastore.simple_cassandra_datastore import CassandraDataStore
 
 
+
 class LoginPayload(BaseModel):
     db_id: str
 
 datastores = {}
+
+class ai_client_cache:
+    def __init__(self):
+        self.client = None
+
+    def get_client(self):
+        if self.client is None:
+            self.client = patch(OpenAI())
+        return self.client
+
+ai_client_cache = ai_client_cache()
 
 def get_datastore_from_cache(token) -> CassandraDataStore:
     global datastores
@@ -35,6 +49,7 @@ class Column:
         self.table_name = table_name
         self.column_name = column_name
         self.db = db
+        self.indexed = False
 
     def __str__(self):
         return f'"{self.table_name}"."{self.column_name}"'
@@ -47,6 +62,7 @@ class Column:
 
     def index(self):
         self.db.client.execute(f"CREATE INDEX IF NOT EXISTS {self.table_name}_{self.column_name}_idx ON {self.db.keyspace}.{self.table_name} ({self.column_name})")
+        self.indexed = True
 
 
 
@@ -120,6 +136,21 @@ class Table:
                     (column_name, Optional[pydantic_type], field(default=None))
                 )
 
+
+        indexed_columns = self.db.client.get_indexes(self.keyspace, self.table_name)
+
+        self._vector_indexes = []
+        for indexed_column in indexed_columns:
+            # see if it's a vector column
+            # first get the indexed column's details from columns
+            column = [column for column in self.raw_columns if column['column_name'] == indexed_column][0]
+
+            if len(column)>0 and 'vector' in column['type']:
+                self._vector_indexes.append(indexed_column)
+                # create a vector endpoint
+        # remove vector columns from indexed columns
+        self._indexed_columns = [column for column in indexed_columns if column not in self._vector_indexes]
+
         ResponseModel = create_model(model_name, **model_fields)
         Dataclass = make_dataclass(model_name, dataclass_fields)
 
@@ -147,15 +178,15 @@ class Table:
             return objs
 
     def xtra(self, request_object: any = None, **kwargs):
-        is_base_model = True
+        is_base_model = False
         if request_object is None:
-            request_object = self._model(**kwargs)
+            request_object = self._dataclass(**kwargs)
         request_dict = None
         if isinstance(request_object, BaseModel):
             request_dict = request_object.dict()
+            is_base_model = True
         elif dataclasses.is_dataclass(request_object):
             request_dict = dataclasses.asdict(request_object)
-            is_base_model = False
         else:
             raise Exception("insert() requires a pydantic model or dataclass object")
 
@@ -168,33 +199,31 @@ class Table:
 
         args = self._cast_args(args, keys)
 
-        indexed_columns = self.db.client.get_indexes(self.keyspace, self.table_name)
-        hasIndex = False
         arg_in_index = False
-        vector_indexes = []
-        for indexed_column in indexed_columns:
-            hasIndex = True
-            # see if it's a vector column
-            # first get the indexed column's details from columns
-            column = [column for column in self.raw_columns if column['column_name'] == indexed_column][0]
-
+        for column in self._indexed_columns:
             for arg in args:
                 if arg == column['column_name']:
                     arg_in_index = True
 
-            if len(column)>0 and 'vector' in column['type']:
-                vector_indexes.append(indexed_column)
-                # create a vector endpoint
-        # remove vector columns from indexed columns
-        indexed_columns = [column for column in indexed_columns if column not in vector_indexes]
+        if not arg_in_index:
+            for column in self._vector_indexes:
+                for arg in args:
+                    if arg == column:
+                        arg_in_index = True
 
         rows = None
-        if len(indexed_columns) + len(vector_indexes) > 0 and arg_in_index:
+        if len(self._indexed_columns) + len(self._vector_indexes) > 0 and arg_in_index:
+            for column in self._vector_indexes:
+                for name, value in args.items():
+                    if name == column:
+                        value = ai_client_cache.get_client().embeddings.create(input=value, model="text-embedding-3-small")
+                        args[name] = value.data[0].embedding
+
             rows = self.db.client.select_from_table_by_index(
                 keyspace=self.keyspace,
                 table=self.table_name,
-                indexed_columns=indexed_columns,
-                vector_indexes=vector_indexes,
+                indexed_columns=self._indexed_columns,
+                vector_indexes=self._vector_indexes,
                 partition_keys=self.partition_keys,
                 columns=self.raw_columns,
                 args=args)
@@ -370,6 +399,13 @@ class Table:
                         else:
                             raise Exception(f"insert() requires a value for {key}, got {request_object}")
                         break
+
+        for column in self._vector_indexes:
+            for name, value in request_dict.items():
+                if name == column:
+                    value = ai_client_cache.get_client().embeddings.create(input=value, model="text-embedding-3-small")
+                    request_dict[name] = value.data[0].embedding
+
         self.db.client.upsert_table_from_dict(self.keyspace, self.table_name, request_dict)
         if is_base_model:
             return self._model(**request_dict)
@@ -445,7 +481,7 @@ class AstraDatabase:
         datastore = get_datastore_from_cache(token)
         self.client = datastore.client
         self.keyspace = "default_keyspace"
-        self._tables = None
+        self._tables = []
 
     def __del__(self):
         pass
@@ -456,10 +492,11 @@ class AstraDatabase:
         tables = []
         for row in rows:
             tables.append(row)
-        table_objects = []
+        table_objects = self._tables
         for table in tables:
             table_obj = Table(self, table)
-            table_objects.append(table_obj)
+            if table_obj.table_name not in [table.table_name for table in self._tables]:
+                table_objects.append(table_obj)
         self._tables = table_objects
         return DynamicTables(self, self._tables)
 

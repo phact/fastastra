@@ -203,7 +203,7 @@ def python_to_cassandra(py_type: Type[Any]) -> str:
     if cass_type is None:
         if isinstance(py_type, tuple):
             try:
-                if py_type[0] == List[float]:
+                if py_type[0] == List[float] or py_type[0] == list[float]:
                     dimensions = py_type[1]
                     cass_type = f"vector<float, {dimensions}>"
 
