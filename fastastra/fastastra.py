@@ -403,8 +403,9 @@ class Table:
         for column in self._vector_indexes:
             for name, value in request_dict.items():
                 if name == column:
-                    value = ai_client_cache.get_client().embeddings.create(input=value, model="text-embedding-3-small")
-                    request_dict[name] = value.data[0].embedding
+                    if isinstance(value, str):
+                        value = ai_client_cache.get_client().embeddings.create(input=value, model="text-embedding-3-small")
+                        request_dict[name] = value.data[0].embedding
 
         self.db.client.upsert_table_from_dict(self.keyspace, self.table_name, request_dict)
         if is_base_model:
