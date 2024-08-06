@@ -35,6 +35,10 @@ pytest-asyncio = "^0.20.3"
 fastcore = "^1.6.1"
 python-fasthtml = "^0.2.1"
 
+
+[tool.poetry.group.optional.dependencies]
+astra-assistants = "^2.0.19"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

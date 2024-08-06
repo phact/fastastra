@@ -183,7 +183,7 @@ def get_pydantic_type(type_str: str) -> Type[Any]:
 def get_openapi_type(type_str: str) -> Dict[str, Union[str, Dict]]:
     return PydanticType(type_str=type_str).openapi_type
 
-def python_to_cassandra(py_type: Type[Any]) -> str:
+def python_to_cassandra(py_type: Type[Any], embedding_dimensions: int = None) -> str:
     mapping = {
         str: CassandraType.TEXT.value,
         int: CassandraType.INT.value,
@@ -212,5 +212,10 @@ def python_to_cassandra(py_type: Type[Any]) -> str:
             except Exception as e:
                 Exception("expected (List[float], dimensions) for vector types")
         else:
-            raise Exception(f"type not supported {py_type}")
+            if py_type[0] == List[float] or py_type[0] == list[float]:
+                if embedding_dimensions is None:
+                    raise Exception("embedding_dimensions must be provided for vector types either in db.embedding_dimensions or in the type in .create (List[float], dimensions)")
+                cass_type = f"vector<float, {embedding_dimensions}>"
+            else:
+                raise Exception(f"type not supported {py_type}")
     return cass_type

@@ -14,10 +14,11 @@ dotenv.load_dotenv("../.env")
 token = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
 dbid = os.environ["DBID"]
 
-db = AstraDatabase(token, dbid)
+db = AstraDatabase(token, dbid, embedding_model="embed-english-v3.0")
+
 todos = db.t.todos
 if todos not in db.t:
-    todos.create(id=uuid.uuid4, title=str, done=bool, embeddings=(list[float], 1536), pk='id')
+    todos.create(id=uuid.uuid4, title=str, done=bool, embeddings=(list[float], db.embedding_dimensions), pk='id')
 if not todos.c.embeddings.indexed:
     todos.c.embeddings.index()
 Todo = todos.dataclass()

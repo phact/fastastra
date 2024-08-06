@@ -1,4 +1,5 @@
 import dataclasses
+import time
 import uuid
 from dataclasses import make_dataclass, field
 from typing import Dict, Tuple, Any, Optional, List, Iterator
@@ -216,7 +217,7 @@ class Table:
             for column in self._vector_indexes:
                 for name, value in args.items():
                     if name == column:
-                        value = ai_client_cache.get_client().embeddings.create(input=value, model="text-embedding-3-small")
+                        value = ai_client_cache.get_client().embeddings.create(input=[value], model=self.db.embedding_model)
                         args[name] = value.data[0].embedding
 
             rows = self.db.client.select_from_table_by_index(
@@ -327,6 +328,8 @@ class Table:
 
     def drop(self):
         self.db.client.execute(f"DROP TABLE IF EXISTS {self.keyspace}.{self.table_name}")
+        self.setup(self.table_name)
+        time.sleep(5)
 
     def create(
             self,
@@ -355,7 +358,7 @@ class Table:
             clustering_columns = [clustering_columns]
         for column_name, column_type in columns.items():
             try:
-                cas_col_type = python_to_cassandra(column_type)
+                cas_col_type = python_to_cassandra(column_type, self.db.embedding_dimensions)
                 column_list.append(CassandraColumn(name=column_name, type=cas_col_type))
             except Exception as e:
                 print(e)
@@ -370,6 +373,7 @@ class Table:
         )
         self.db.client.execute(ddl_model.to_string())
         self.setup(table_name=self.table_name)
+
 
     @property
     def c(self):
@@ -404,7 +408,7 @@ class Table:
             for name, value in request_dict.items():
                 if name == column:
                     if isinstance(value, str):
-                        value = ai_client_cache.get_client().embeddings.create(input=value, model="text-embedding-3-small")
+                        value = ai_client_cache.get_client().embeddings.create(input=[value], model=self.db.embedding_model)
                         request_dict[name] = value.data[0].embedding
 
         self.db.client.upsert_table_from_dict(self.keyspace, self.table_name, request_dict)
@@ -476,13 +480,22 @@ class DynamicTables:
 
 
 class AstraDatabase:
-    def __init__(self, token, dbid):
+    def __init__(self, token, dbid, embedding_model:str = None):
         login_payload = LoginPayload(db_id=dbid)
         db_login(login_payload, token)
         datastore = get_datastore_from_cache(token)
         self.client = datastore.client
         self.keyspace = "default_keyspace"
         self._tables = []
+        self.embedding_model = None
+        self.embedding_dimensions = None
+        if embedding_model is not None:
+            self.embedding_model = embedding_model
+            value = ai_client_cache.get_client().embeddings.create(input=["test"], model=embedding_model).data[0].embedding
+            if isinstance(value, list):
+                self.embedding_dimensions = len(value)
+            else:
+                raise Exception("Invalid embedding model")
 
     def __del__(self):
         pass
