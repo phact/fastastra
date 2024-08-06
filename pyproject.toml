@@ -20,6 +20,7 @@ cassandra-driver = "^3.28"
 loguru = "^0.7.0"
 pyyaml = "^6.0.1"
 pydantic = "^2.7.4"
+python-fasthtml = "^0.2.4"
 
 [tool.poetry.scripts]
 start = "cass_api.main:start"
@@ -37,7 +38,7 @@ python-fasthtml = "^0.2.1"
 
 
 [tool.poetry.group.optional.dependencies]
-astra-assistants = "^2.0.19"
+astra-assistants = "^2.0.21"
 
 [build-system]
 requires = ["poetry-core"]
