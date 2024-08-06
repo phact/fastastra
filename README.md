@@ -1,5 +1,11 @@
 # fastastra
 
+[![commits](https://img.shields.io/github/commit-activity/m/phact/fastastra)](https://github.com/phact/fastastra/commits/main)
+[![Github Last Commit](https://img.shields.io/github/last-commit/phact/fastastra)](https://github.com/phact/fastastra/commits/main)
+[![PyPI version](https://badge.fury.io/py/fastastra.svg)](https://badge.fury.io/py/fastastra)
+[![Discord chat](https://img.shields.io/static/v1?label=Chat%20on&message=Discord&color=blue&logo=Discord&style=flat-square)](https://discord.gg/MEFVXUvsuy)
+[![Stars](https://img.shields.io/github/stars/phact/fastastra?style=social)](https://github.com/phact/fastastra/stargazers)
+
 fastastra is modeled after [fastlite](https://github.com/AnswerDotAI/fastlite) and it allows you to use [FastHTML](https://github.com/AnswerDotAI/fasthtml) with AstraDB (Cassandra). 
 
 ## Installation
