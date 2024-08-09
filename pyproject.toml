@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fastastra"
-version = "0.1.29"
+version = "0.1.30"
 description = ""
 authors = ["seb <seb@datastax.com>"]
 readme = "README.md"
