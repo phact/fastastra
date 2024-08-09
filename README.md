@@ -44,8 +44,8 @@ or
     db = AstraDatabase(token, dbid, embedding_model="embed-english-v3.0") # supports all embedding models in LiteLLM using env vars
     dogs = db.t.dogs
     if dogs not in db.t:
-        #dogs.create(id=int, name=str, good_boy=bool, embedding=(List[float], 2), pk='id') # specify dimensions in create
-        dogs.create(id=int, name=str, good_boy=bool, embedding=List[float], pk='id') # infer dimensions from db.embedding_model
+        #dogs.create(id=int, name=str, good_boy=bool, embedding=(list[float], 2), pk='id') # specify dimensions in create
+        dogs.create(id=int, name=str, good_boy=bool, embedding=list[float], pk='id') # infer dimensions from db.embedding_model
         dogs.c.good_boy.index()
         dogs.c.embedding.index()
 
