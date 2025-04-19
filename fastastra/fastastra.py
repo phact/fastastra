@@ -141,16 +141,17 @@ class Table:
         indexed_columns = self.db.client.get_indexes(self.keyspace, self.table_name)
 
         self._vector_indexes = []
+        valid_indexed_columns = []
         for indexed_column in indexed_columns:
-            # see if it's a vector column
-            # first get the indexed column's details from columns
-            column = [column for column in self.raw_columns if column['column_name'] == indexed_column][0]
-
-            if len(column)>0 and 'vector' in column['type']:
+            col = next((c for c in self.raw_columns if c.get('column_name') == indexed_column), None)
+            if col is None:
+                continue
+            col_type = col.get('type', '')
+            if 'vector' in col_type:
                 self._vector_indexes.append(indexed_column)
-                # create a vector endpoint
-        # remove vector columns from indexed columns
-        self._indexed_columns = [column for column in indexed_columns if column not in self._vector_indexes]
+            else:
+                valid_indexed_columns.append(indexed_column)
+        self._indexed_columns = valid_indexed_columns
 
         ResponseModel = create_model(model_name, **model_fields)
         Dataclass = make_dataclass(model_name, dataclass_fields)

@@ -162,14 +162,14 @@ trio = ["trio (>=0.26.1)"]
 
 [[package]]
 name = "astra-assistants"
-version = "2.5.1"
+version = "2.5.3"
 description = "Astra Assistants API - drop in replacement for OpenAI Assistants, powered by AstraDB"
 optional = false
 python-versions = "<4.0,>=3.10.0"
 groups = ["main"]
 files = [
-    {file = "astra_assistants-2.5.1-py3-none-any.whl", hash = "sha256:5cd03787b96a466241858edfa3ab4d2bcb72b7a5928644fdf1d8b1e269f1feda"},
-    {file = "astra_assistants-2.5.1.tar.gz", hash = "sha256:c9e30118b50a63bf547feea9dad9852c8d3c7823379fea9eb51586723407f433"},
+    {file = "astra_assistants-2.5.3-py3-none-any.whl", hash = "sha256:18390cdc2db695b468da9e4b06544130f851e237206ecac04824ddac71e902f7"},
+    {file = "astra_assistants-2.5.3.tar.gz", hash = "sha256:9c75cd723b4ce1c1d6c8b354c37238fdae109e85fc6911da207c2a7983d3dbe5"},
 ]
 
 [package.dependencies]
@@ -3097,4 +3097,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "264dd72d9c9eac5e59a7b9d493744a52a77a7b254c9a689c23812154d224c524"
+content-hash = "2fad3d737a2309f0e1252696789fc51794cdd5f176dd343de0e0ec988ccbf62e"
