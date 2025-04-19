@@ -395,9 +395,9 @@ class CassandraClient():
 
         if has_pk_args:
             for column in partition_keys:
-                if column['column_name'] in args:
-                    queryString += f"{column['column_name']} = ? AND "
-                    bind_values.append(args[column['column_name']])
+                if column in args:
+                    queryString += f"{column} = ? AND "
+                    bind_values.append(args[column])
         # remove the last AND
         if has_pk_args:
             queryString = queryString[:-4]
