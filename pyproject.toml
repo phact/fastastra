@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fastastra"
-version = "0.1.31"
+version = "0.1.32"
 description = ""
 authors = ["seb <seb@datastax.com>"]
 readme = "README.md"
@@ -21,7 +21,7 @@ loguru = "^0.7.0"
 pyyaml = "^6.0.1"
 pydantic = "^2.7.4"
 python-fasthtml = "^0.2.4"
- astra-assistants = "^2.4.7"
+astra-assistants = "^2.5.1"
 
 [tool.poetry.scripts]
 start = "cass_api.main:start"

@@ -162,14 +162,14 @@ trio = ["trio (>=0.26.1)"]
 
 [[package]]
 name = "astra-assistants"
-version = "2.4.7"
+version = "2.5.1"
 description = "Astra Assistants API - drop in replacement for OpenAI Assistants, powered by AstraDB"
 optional = false
-python-versions = ">=3.10.0"
+python-versions = "<4.0,>=3.10.0"
 groups = ["main"]
 files = [
-    {file = "astra_assistants-2.4.7-py3-none-any.whl", hash = "sha256:2babe7b5b66d14dfe57ae834ea3e3705aae31ecb52f28bc43cf766c94ec49af0"},
-    {file = "astra_assistants-2.4.7.tar.gz", hash = "sha256:2b388d4b6741808258c11f35701fcfd9001179773a896655f2ee7bf742488eb6"},
+    {file = "astra_assistants-2.5.1-py3-none-any.whl", hash = "sha256:5cd03787b96a466241858edfa3ab4d2bcb72b7a5928644fdf1d8b1e269f1feda"},
+    {file = "astra_assistants-2.5.1.tar.gz", hash = "sha256:c9e30118b50a63bf547feea9dad9852c8d3c7823379fea9eb51586723407f433"},
 ]
 
 [package.dependencies]
@@ -187,7 +187,7 @@ tree-sitter = ">=0.23.0,<0.24.0"
 tree-sitter-python = ">=0.23.0,<0.24.0"
 
 [package.extras]
-tools = ["astrapy (>=1.2.1,<2.0.0)", "e2b (>=1.0.1,<2.0.0)", "e2b-code-interpreter (>=1.0.1,<2.0.0)"]
+tools = ["astrapy (>=2.0.1,<3.0.0)", "e2b (>=1.0.1,<2.0.0)", "e2b-code-interpreter (>=1.0.1,<2.0.0)"]
 
 [[package]]
 name = "async-timeout"
@@ -3097,4 +3097,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "f1516452d19f3958aefd5d6b6d6abe3052950c9de0cbf2eb1aa0761a5b3f8cd9"
+content-hash = "264dd72d9c9eac5e59a7b9d493744a52a77a7b254c9a689c23812154d224c524"
