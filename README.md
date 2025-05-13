@@ -73,6 +73,6 @@ or
 
 This example was taken almost verbatim from [the FastHTML examples repo](https://github.com/AnswerDotAI/fasthtml-example). The only change was the dependency, the db connection string, and changing the id from `int` to `uuid1`.
 
-    poetry install
+    uv sync
 
-    poetry run python examples/todo.py
+    uv run python examples/todo.py

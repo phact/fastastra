@@ -1,41 +1,40 @@
-[tool.poetry]
+[project]
 name = "fastastra"
 version = "0.1.36"
 description = ""
-authors = ["seb <seb@datastax.com>"]
 readme = "README.md"
-packages = [{include = "fastastra"}, {include= "datastore"}]
+requires-python = ">=3.10"
+dependencies = [
+  "uvicorn>=0.30.3",
+  "python-dotenv>=1.0.1",
+  "tenacity>=8.2.1",
+  "numpy>=1.24.2",
+  "cassandra-driver>=3.28",
+  "loguru>=0.7.0",
+  "pyyaml>=6.0.1",
+  "pydantic>=2.7.4",
+  "python-fasthtml>=0.2.4",
+  "astra-assistants>=2.5.3",
+]
 
-[[tool.poetry.source]]
-name = "PyPI"
-priority = "primary"
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.2.1",
+  "pytest-cov>=4.0.0",
+  "pytest-asyncio>=0.20.3",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-uvicorn = "^0.30.3"
-python-dotenv = "^1.0.1"
-tenacity = "^8.2.1"
-numpy = "^1.24.2"
-cassandra-driver = "^3.28"
-loguru = "^0.7.0"
-pyyaml = "^6.0.1"
-pydantic = "^2.7.4"
-python-fasthtml = "^0.2.4"
-astra-assistants = "^2.5.3"
 
-[tool.poetry.scripts]
+[project.scripts]
 start = "cass_api.main:start"
-dev = "cass_api.main:start"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.2.1"
-pytest-cov = "^4.0.0"
-pytest-asyncio = "^0.20.3"
-
+dev   = "cass_api.main:start"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["fastastra/", "datastore/"]
 
 [tool.pytest.ini_options]
 pythonpath = [

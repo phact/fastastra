@@ -2,12 +2,14 @@ FROM python:3.10 AS requirements-stage
 
 WORKDIR /tmp
 
-# Install Poetry
-RUN pip install poetry
+# Install uv (Python package manager)
+RUN pip install uv
 
-COPY ./pyproject.toml ./poetry.lock* /tmp/
+# Copy pyproject and lockfile for export
+COPY ./pyproject.toml ./uv.lock* /tmp/
 
-RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
+# Export pinned dependencies to requirements.txt
+RUN uv export --format requirements-txt --output-file requirements.txt --no-hashes
 
 FROM python:3.10
 
