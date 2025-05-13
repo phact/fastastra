@@ -1,5 +1,6 @@
 import dataclasses
 import time
+import traceback
 import uuid
 from dataclasses import make_dataclass, field
 from typing import Dict, Tuple, Any, Optional, List, Iterator
@@ -40,8 +41,15 @@ def db_login(payload: LoginPayload, token: str):
     datastore = datastores.get(token)
     if datastore is None:
         datastore = CassandraDataStore()
-    if payload.db_id == "":
-        return Exception(detail='{"msg": "db_id is required."}')
+    if payload is None or payload.db_id == "":
+        # Use Astra DevOps API to list available databases
+        import requests
+        headers = {"Authorization": f"Bearer {token}"}
+        response = requests.get("https://api.astra.datastax.com/v2/databases", headers=headers)
+        if response.status_code == 200:
+            dbs = [{db.get("info", {}).get("name", "unknown"): db.get("id", "unknown") }for db in response.json()]
+            raise ValueError(f'{{"msg": "DBID env var is required. Available databases: {dbs}"}}')
+        raise ValueError('{"msg": "db_id is required."}')
     datastore.setupSession(token, payload.db_id)
     datastores[token] = datastore
 
@@ -180,6 +188,7 @@ class Table:
             return objs
 
     def xtra(self, request_object: any = None, **kwargs):
+        self.setup(self.table_name)
         is_base_model = False
         if request_object is None:
             request_object = self._dataclass(**kwargs)
@@ -204,7 +213,7 @@ class Table:
         arg_in_index = False
         for column in self._indexed_columns:
             for arg in args:
-                if arg == column['column_name']:
+                if arg == column:
                     arg_in_index = True
 
         if not arg_in_index:
@@ -217,7 +226,7 @@ class Table:
         if len(self._indexed_columns) + len(self._vector_indexes) > 0 and arg_in_index:
             for column in self._vector_indexes:
                 for name, value in args.items():
-                    if name == column:
+                    if name == column and isinstance(value, str):
                         value = ai_client_cache.get_client().embeddings.create(input=[value], model=self.db.embedding_model)
                         args[name] = value.data[0].embedding
 
@@ -372,7 +381,11 @@ class Table:
             clustering_columns=clustering_columns,
             thoughts=None
         )
-        self.db.client.execute(ddl_model.to_string())
+        try:
+            self.db.client.execute(ddl_model.to_string())
+        except Exception as e:
+            print(e)
+            raise e
         self.setup(table_name=self.table_name)
 
 
@@ -384,14 +397,17 @@ class Table:
         is_base_model = True
         if request_object is None:
             request_object = self._model(**kwargs)
+            if request_object.model_fields == {}:
+                print("not good")
+                self.setup(self.table_name)
         request_dict = None
         if isinstance(request_object, BaseModel):
-            request_dict = request_object.dict()
+            request_dict = request_object.model_dump() if hasattr(request_object, 'model_dump') else request_object.dict()
         elif dataclasses.is_dataclass(request_object):
             request_dict = dataclasses.asdict(request_object)
             is_base_model = False
         else:
-            raise Exception("insert() requires a pydantic model or dataclass object")
+            raise Exception(f"insert() requires a pydantic model or dataclass object, got {type(request_object).__name__}")
 
         for key in self.partition_keys:
             if request_dict[key] is None:
@@ -479,10 +495,11 @@ class DynamicTables:
         return iter(self._tables)
 
 
-
 class AstraDatabase:
     def __init__(self, token, dbid, embedding_model:str = None):
-        login_payload = LoginPayload(db_id=dbid)
+        login_payload = None
+        if dbid is not None:
+            login_payload = LoginPayload(db_id=dbid)
         db_login(login_payload, token)
         datastore = get_datastore_from_cache(token)
         self.client = datastore.client

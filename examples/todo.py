@@ -12,9 +12,9 @@ dotenv.load_dotenv("./.env")
 dotenv.load_dotenv("../.env")
 
 token = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
-dbid = os.environ["DBID"]
+dbid = os.environ.get("DBID", None)
 
-db = AstraDatabase(token, dbid, embedding_model="embed-english-v3.0")
+db = AstraDatabase(token, dbid, embedding_model="text-embedding-3-small")
 
 todos = db.t.todos
 if todos not in db.t:

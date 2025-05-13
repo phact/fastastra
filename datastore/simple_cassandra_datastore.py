@@ -270,8 +270,14 @@ class CassandraClient():
                 {placeholders}
             );"""
 
+        logger.info(f"Preparing query_string: {query_string}")
         statement = self.session.prepare(query_string)
         statement.consistency_level = ConsistencyLevel.QUORUM
+
+        for value in values_list:
+            if value is None:
+                values_list[values_list.index(value)] = UNSET_VALUE
+
         try:
             response = self.session.execute(
                 statement,
@@ -336,11 +342,12 @@ class CassandraClient():
         return indexed_columns
 
     def get_columns(self, keyspace, table) -> List[Dict[str, Any]]:
-        queryString = f"""select column_name, kind, type, position from system_schema."columns" WHERE keyspace_name = '{keyspace}' and table_name = '{table}';"""
+        queryString = f"""select column_name, kind, type, position from system_schema."columns" WHERE keyspace_name = ? and table_name = ?;"""
         statement = self.session.prepare(queryString)
-        statement.consistency_level = ConsistencyLevel.QUORUM
+        bound_statement = statement.bind((keyspace, table))
+        bound_statement.consistency_level = ConsistencyLevel.QUORUM
         self.session.row_factory = dict_factory
-        rows = self.session.execute(statement)
+        rows = self.session.execute(bound_statement)
         json_rows = [dict(row) for row in rows]
         self.session.row_factory = named_tuple_factory
         return json_rows
