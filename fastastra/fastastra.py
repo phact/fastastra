@@ -1,13 +1,12 @@
 import dataclasses
 import time
-import traceback
 import uuid
 from dataclasses import make_dataclass, field
 from typing import Dict, Tuple, Any, Optional, List, Iterator
 
-from astra_assistants import patch
 from openai import OpenAI
 from pydantic import BaseModel, create_model
+from agentd.patch import patch_openai_with_mcp
 
 from datastore.cassandra_util import get_pydantic_type, python_to_cassandra, CassandraType, DDLModel, CassandraColumn
 from datastore.simple_cassandra_datastore import CassandraDataStore
@@ -25,7 +24,7 @@ class ai_client_cache:
 
     def get_client(self):
         if self.client is None:
-            self.client = patch(OpenAI())
+            self.client = patch_openai_with_mcp(OpenAI())
         return self.client
 
 ai_client_cache = ai_client_cache()

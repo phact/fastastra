@@ -14,7 +14,8 @@ dependencies = [
   "pyyaml>=6.0.1",
   "pydantic>=2.7.4",
   "python-fasthtml>=0.2.4",
-  "astra-assistants>=2.5.3",
+  "agentd>=0.1.4",
+  "openai>=1.78.1",
 ]
 
 [project.optional-dependencies]
