@@ -15,7 +15,6 @@ dependencies = [
   "pydantic>=2.7.4",
   "python-fasthtml>=0.2.4",
   "agentd>=0.1.4",
-  "openai>=1.78.1",
 ]
 
 [project.optional-dependencies]
