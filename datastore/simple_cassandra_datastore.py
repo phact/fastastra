@@ -9,6 +9,7 @@ from loguru import logger
 from pydantic import BaseModel
 
 from cassandra.cluster import Cluster, NoHostAvailable
+from cassandra.io.libevreactor import LibevConnection
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.query import SimpleStatement, dict_factory, named_tuple_factory, UNSET_VALUE
 
@@ -170,6 +171,7 @@ class CassandraClient():
                 # TODO - support unhibernating things
                 try:
                     self.cluster = Cluster(cloud=cloud_config, auth_provider=auth_provider)
+                    self.cluster.connection_class = LibevConnection
                 except Exception as e:
                     make_keyspace(dbid, token)
                     logger.warning(f"DB {dbid} is Hibernated, will attempt to wake it up")
